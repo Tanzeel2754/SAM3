@@ -119,8 +119,8 @@ class Sam3Processor:
         text_outputs = self.model.backbone.forward_text([prompt], device=self.device)
         # will erase the previous text prompt if any
         state["backbone_out"].update(text_outputs)
-        if "geometric_prompt" not in state:
-            state["geometric_prompt"] = self.model._get_dummy_prompt()
+        # New text prompt replaces any prior box prompts
+        state["geometric_prompt"] = self.model._get_dummy_prompt()
 
         return self._forward_grounding(state)
 
@@ -195,6 +195,7 @@ class Sam3Processor:
         presence_score = outputs["presence_logit_dec"].sigmoid().unsqueeze(1)
         out_probs = (out_probs * presence_score).squeeze(-1)
 
+        state["peak_score"] = float(out_probs.max().item()) if out_probs.numel() > 0 else 0.0
         keep = out_probs > self.confidence_threshold
         out_probs = out_probs[keep]
         out_masks = out_masks[keep]
